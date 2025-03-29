@@ -10,6 +10,7 @@ pipeline {
         AWS_ACCOUNT_ID = '776951075837'
         JAVA_HOME = '/usr/local/jdk-21.0.2'
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        MVN = '/opt/maven/bin/mvn'
     }
 
     stages {
@@ -25,7 +26,7 @@ pipeline {
                     dir('backend/cache-service-weather-prediction') {
                         sh """
                         echo "Running Unit Tests"
-                        mvn test
+                        MVN test
                         """
                     }
                 }
@@ -43,7 +44,7 @@ pipeline {
                     dir('backend/cache-service-weather-prediction') {
                         sh """
                         echo "Running Maven build in backend/cache-service-weather-prediction"
-                        mvn clean install
+                        MVN clean install
                         """
                     }
                 }
