@@ -32,7 +32,7 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build Docker Image with Image Tag') {
             steps {
                 script {
                     dir('backend/cache-service-weather-prediction') {
