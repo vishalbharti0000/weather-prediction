@@ -79,26 +79,26 @@ pipeline {
 
 
         stage('Deploy to EC2') {
-                    steps {
-                        script {
-                            // Authenticate EC2 with ECR and deploy container
-                            sshagent (credentials: ['ec2-ssh-key']) {
-                                sh """
-                                ssh -o StrictHostKeyChecking=no $SSH_USER@$INSTANCE_IP << 'EOF'
-                                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-                                docker pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
-                                docker stop cache-service-weather-prediction || true
-                                docker rm cache-service-weather-prediction || true
-                                docker run -d -p 90:90 --name cache-service-weather-prediction \
-                                    -e REDIS_PASS=\\"\\$REDIS_PASS\\" \\
-                                    -e WEATHER_API_KEY=\\"\\$WEATHER_API_KEY\\" \\
-                                    "$AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG"
-                                EOF
-                                """
-                            }
-                        }
+            steps {
+                script {
+                    // Authenticate EC2 with ECR and deploy container
+                    sshagent (credentials: ['ec2-ssh-key']) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no $SSH_USER@$INSTANCE_IP << 'EOF'
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                        docker pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+                        docker stop cache-service-weather-prediction || true
+                        docker rm cache-service-weather-prediction || true
+                        docker run -d -p 90:90 --name cache-service-weather-prediction \
+                            -e REDIS_PASS="\\${REDIS_PASS}" \\
+                            -e WEATHER_API_KEY="\\${WEATHER_API_KEY}" \\
+                            "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}"
+                        EOF
+                        """
                     }
                 }
+            }
+        }
     }
 
     post {
