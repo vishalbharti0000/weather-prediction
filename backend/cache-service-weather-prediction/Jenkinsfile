@@ -91,10 +91,10 @@ pipeline {
                         docker pull ${REPO_URL}
                         docker stop cache-service-weather-prediction || true
                         docker rm cache-service-weather-prediction || true
-                        //docker run -d -p 90:90 --name cache-service-weather-prediction \\
-                          //  -e REDIS_PASS=\\$REDIS_PASS \\
-                            //-e WEATHER_API_KEY=\\$WEATHER_API_KEY \\
-                            //$REPO_URL
+                        docker run -d -p 90:90 --name cache-service-weather-prediction \\
+                            -e REDIS_PASS=\\$REDIS_PASS \\
+                            -e WEATHER_API_KEY=\\$WEATHER_API_KEY \\
+                            $REPO_URL
                         EOF
                         """
                     }
