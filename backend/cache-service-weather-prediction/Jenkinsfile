@@ -72,7 +72,7 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker tag ${$REPO_URL} ${REPO_URL}
+                    docker tag ${REPO_URL} ${REPO_URL}
                     docker push ${REPO_URL}
                     """
                 }
