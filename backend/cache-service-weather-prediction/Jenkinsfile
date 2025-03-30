@@ -5,8 +5,8 @@ pipeline {
         AWS_REGION = 'us-east-1'              
         ECR_REPO_NAME = 'cache-service-weather-prediction'
         IMAGE_TAG = "cache-service-weather-prediction-latest"
-        EC2_IP = '3.233.227.114'
-        EC2_USER = 'weather-prediction'
+        INSTANCE_IP = '52.71.165.52'
+        SSH_USER = 'ec2-user'
         AWS_ACCOUNT_ID = '776951075837'
         JAVA_HOME = '/usr/local/jdk-21.0.2'
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
@@ -77,36 +77,29 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
-            steps {
-                script {
-                    sshagent(credentials: ['ec2-ssh-key']) {
-                        sh """
-                            # Stop and remove any container using port 90
-                            ssh ${EC2_USER}@${EC2_IP} '
-                                container_id=\$(docker ps -q -f "publish=90")
-                                if [ -n "\$container_id" ]; then
-                                    echo "Stopping and removing container running on port 90..."
-                                    docker stop \$container_id
-                                    docker rm \$container_id
-                                else
-                                    echo "No container running on port 90"
-                                fi
-                            '
-                            
-                            # Pull the latest image from ECR
-                            aws ecr get-login-password --region ${AWS_REGION} | ssh ${EC2_USER}@${EC2_IP} 'docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com'
 
-                            # Pull the Docker image and run it on port 90
-                            ssh ${EC2_USER}@${EC2_IP} '
-                                docker pull ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG} && \
-                                docker run -d -p 90:90 ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}
-                            '
-                        """
+        stage('Deploy to EC2') {
+                    steps {
+                        script {
+                            // Authenticate EC2 with ECR and deploy container
+                            sshagent (credentials: ['ec2-ssh-key']) {
+                                sh """
+                                ssh -o StrictHostKeyChecking=no $SSH_USER@$INSTANCE_IP << 'EOF'
+                                aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+                                docker pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+                                docker stop cache-service-weather-prediction || true
+                                docker rm cache-service-weather-prediction || true
+                                docker run -d -p 90:90 --name cache-service-weather-prediction \
+                                    -e REDIS_PASS=$REDIS_PASS \
+                                    -e WEATHER_API_KEY=$WEATHER_API_KEY \
+                                    $AWS_ACCOUNT_ID.dkr.ecr.us-east-1.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+                                docker run -d -p 90:8080 --name spring-boot-app $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+                                EOF
+                                """
+                            }
+                        }
                     }
                 }
-            }
-        }
     }
 
     post {
