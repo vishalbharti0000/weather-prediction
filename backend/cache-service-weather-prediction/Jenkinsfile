@@ -10,6 +10,8 @@ pipeline {
         AWS_ACCOUNT_ID = '776951075837'
         JAVA_HOME = '/usr/lib/jvm/java-21-amazon-corretto.x86_64'
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        REPO_BASE_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        REPO_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}"
     }
 
     stages {
@@ -44,7 +46,7 @@ pipeline {
                         fi
 
                         # Build the Docker image
-                        docker build -t ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG} .
+                        docker build -t $REPO_URL .
                         """
                     }
                 }
@@ -59,7 +61,7 @@ pipeline {
                         aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
                         aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
                         aws configure set region $AWS_REGION
-                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REPO_BASE_URL}
                         """
                     }
                 }
@@ -70,8 +72,8 @@ pipeline {
             steps {
                 script {
                     sh """
-                    docker tag ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG} ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}
-                    docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}
+                    docker tag ${$REPO_URL} ${REPO_URL}
+                    docker push ${REPO_URL}
                     """
                 }
             }
@@ -85,14 +87,14 @@ pipeline {
                     sshagent (credentials: ['ec2-ssh-key']) {
                         sh """
                         ssh -o StrictHostKeyChecking=no $SSH_USER@$INSTANCE_IP << EOF
-                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-                        docker pull $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REPO_BASE_URL}
+                        docker pull ${REPO_URL}
                         docker stop cache-service-weather-prediction || true
                         docker rm cache-service-weather-prediction || true
                         //docker run -d -p 90:90 --name cache-service-weather-prediction \\
                           //  -e REDIS_PASS=\\$REDIS_PASS \\
                             //-e WEATHER_API_KEY=\\$WEATHER_API_KEY \\
-                            //$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME:$IMAGE_TAG
+                            //$REPO_URL
                         EOF
                         """
                     }
