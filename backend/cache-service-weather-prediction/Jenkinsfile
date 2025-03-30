@@ -95,7 +95,7 @@ pipeline {
                             -e REDIS_PASS=\\$REDIS_PASS \\
                             -e WEATHER_API_KEY=\\$WEATHER_API_KEY \\
                             $REPO_URL
-                        REMOTE_EOF
+                        << EOF
                         """
                     }
                 }
