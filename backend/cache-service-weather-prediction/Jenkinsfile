@@ -163,7 +163,7 @@ pipeline {
                             echo "Container started successfully. Current running containers:"
                             docker ps
                             echo "Deployment completed on EC2"
-                            EOF
+                            << EOF
                             """
                             echo "Deployment to EC2 completed successfully"
                         } catch (Exception e) {
