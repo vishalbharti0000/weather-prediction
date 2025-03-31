@@ -6,4 +6,4 @@ COPY target/advice-service-weather-prediction.jar /app/advice-service-weather-pr
 
 EXPOSE 91
 
-ENTRYPOINT ["java", "-jar", "cache-service-weather-prediction.jar"]
+ENTRYPOINT ["java", "-jar", "advice-service-weather-prediction.jar"]
