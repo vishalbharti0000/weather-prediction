@@ -178,18 +178,25 @@ pipeline {
 
     post {
         always {
+            echo "=================================================================="
             echo "Pipeline execution completed - Status: ${currentBuild.currentResult}"
-            echo "Image version used: ${VERSION_TAG}"
+            echo "Image version: ${REPO_URL}:${VERSION_TAG}"
+            echo "Build duration: ${currentBuild.durationString}"
+            echo "=================================================================="
         }
         success {
-            echo "Pipeline executed successfully!"
-            echo "Deployed image: ${REPO_URL}:${VERSION_TAG}"
-            echo "Latest tag also updated: ${REPO_URL}:latest"
+            echo "SUCCESS: Pipeline executed successfully!"
+            echo "Deployed service: ${CONTAINER_NAME}"
+            echo "Access URL: http://${INSTANCE_IP}:90"
+            echo "ECR Images:"
+            echo "  - Versioned: ${REPO_URL}:${VERSION_TAG}"
+            echo "  - Latest: ${REPO_URL}:latest"
         }
         failure {
-            echo "Pipeline execution failed!"
+            echo "FAILURE: Pipeline execution failed!"
             echo "Check the console output for detailed error messages."
             echo "Failed image version: ${VERSION_TAG}"
+            echo "Last successful build: ${currentBuild.previousBuild?.result ?: 'N/A'}"
         }
     }
 }
