@@ -1,0 +1,121 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'us-east-1'
+        CONTAINER_NAME = 'advice-service-weather-prediction'
+        ECR_REPO_NAME = 'advice-service-weather-prediction'
+        IMAGE_TAG = "advice-service-weather-prediction-latest"
+        INSTANCE_IP = '52.71.165.52'
+        SSH_USER = 'ec2-user'
+        AWS_ACCOUNT_ID = '776951075837'
+        JAVA_HOME = '/usr/lib/jvm/java-21-amazon-corretto.x86_64'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        REPO_BASE_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        REPO_URL = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO_NAME}:${IMAGE_TAG}"
+    }
+
+    stages {
+        stage('Checkout from Git') {
+            steps {
+                git branch: 'release', url: 'https://github.com/vishalbharti0000/weather-prediction.git'
+            }
+        }
+
+       stage('Build Project') {
+            steps {
+                script {
+                    dir('backend/advice-service-weather-prediction') {
+                        sh """
+                        echo "Running Maven build in backend/cache-service-weather-prediction"
+                        mvn clean install
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    dir('backend/advice-service-weather-prediction') {
+                        sh """
+                        # Verify the JAR file exists
+                        if [ ! -f target/advice-service-weather-prediction.jar ]; then
+                            echo "ERROR: JAR file not found in the target directory!"
+                            exit 1
+                        fi
+
+                        # Build the Docker image
+                        docker build -t $REPO_URL .
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Login to Amazon ECR') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(credentialsId: 'aws-credentials', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                        sh """
+                        aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+                        aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+                        aws configure set region $AWS_REGION
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REPO_BASE_URL}
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                script {
+                    sh """
+                    docker tag ${REPO_URL} ${REPO_URL}
+                    docker push ${REPO_URL}
+                    """
+                }
+            }
+        }
+
+
+        stage('Deploy to EC2') {
+            steps {
+                script {
+                    // Authenticate EC2 with ECR and deploy container
+                    sshagent (credentials: ['ec2-ssh-key']) {
+                        sh """
+                        ssh -o StrictHostKeyChecking=no $SSH_USER@$INSTANCE_IP << EOF
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${REPO_BASE_URL}
+                        docker pull ${REPO_URL}
+                        echo "Stopping and removing container"
+                        docker stop ${CONTAINER_NAME} || true
+                        echo "Stopped container"
+                        docker rm ${CONTAINER_NAME} || true
+                        echo "removed container"
+                        docker run -d -p 91:91 --name ${CONTAINER_NAME} \\
+                            -e WEATHER_API_KEY=\\$WEATHER_API_KEY \\
+                            $REPO_URL
+                        echo "container running on port 91..."
+                        << EOF
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline execution completed.'
+        }
+        success {
+            echo 'Pipeline executed successfully.'
+        }
+        failure {
+            echo 'Pipeline execution failed.'
+        }
+    }
+}
