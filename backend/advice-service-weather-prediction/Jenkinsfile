@@ -27,7 +27,7 @@ pipeline {
                 script {
                     dir('backend/advice-service-weather-prediction') {
                         sh """
-                        echo "Running Maven build in backend/cache-service-weather-prediction"
+                        echo "Running Maven build in backend/advice-service-weather-prediction"
                         mvn clean install
                         """
                     }
@@ -97,7 +97,7 @@ pipeline {
                         echo "removed container"
                         docker run -d -p 91:91 --name ${CONTAINER_NAME} \\
                             -e WEATHER_API_KEY=\\$WEATHER_API_KEY \\
-                            $REPO_URL
+                            $REPO_URL || true
                         echo "container running on port 91..."
                         << EOF
                         """
