@@ -35,7 +35,7 @@ pipeline {
                             echo "Directory contents:"
                             ls -la
                             echo "Running Maven build..."
-                            mvn clean install -X
+                            mvn clean install
                             """
                             echo "Maven build completed successfully"
 
